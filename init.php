@@ -23,6 +23,13 @@ $config = array(
 'timeout' => 10, 					# Timeout in seconds for initializing connection
 );
 
+# Add full hostmasks here to add admins.
+# ie. nickname!realname@hostaddress.isp.com
+
+$adminList = array(
+'lothar!lothar@110-174-74-30.static.tpgi.com.au',
+);
+
 /**
  * No need to edit below this line
  * ----------------------------------------------------------------------------
@@ -31,5 +38,5 @@ $config = array(
 include_once("class.ircBot.php");
 
 set_time_limit(0); # Continual script setting for commandline execution
-$bot = new ircBot($config);
+$bot = new ircBot($config, $adminList);
 

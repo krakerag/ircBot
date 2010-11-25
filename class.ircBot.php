@@ -10,12 +10,14 @@ class ircBot {
 	private $socket; # Socket variable
 	private $inbound; # Inbound messages from server
 	private $config; # Config from object construction
+	private $admins; # Admin list of hostmasks
 
 	/**
 	 * Setup a connection and init monitoring of chat
 	 */
-	function __construct($config) {
+	function __construct($config, $adminList) {
 		$this->config = $config;
+		$this->admins = $adminList;
 		if($this->config['serverPassword'] == "") $this->config['serverPassword'] = "NOPASS";
 		$this->log("triviaBot - starting up...");
 		$this->log("[INIT]: ".print_r($config,true));
