@@ -1,0 +1,20 @@
+ircBot
+------
+
+An irc bot for PHP5 designed to run off the command line of a linux server.
+
+Usage:
+------
+
+- Setup your config items at the top of init.php.
+- Make sure the command interpreter is correct on line 1. You can do this by
+typing 'which php' and adjusting if nessesary.
+- Set init.php as executable using 'chmod +x init.php'
+- Start bot using ./init.php
+- Bot can be terminated using CTRL-C or other command line break.
+
+Author:
+-------
+Matthew Hallsworth <matthew.hallsworth@gmail.com>
+
+This code is free to use and distribute under GNU.
