@@ -39,7 +39,7 @@ class ircModule {
 	 */
 	function launch($command, $args) {
 		if(method_exists($this, $command)) {
-			$this->$command($args);
+			return $this->$command($args);
 		}
 	}
 }

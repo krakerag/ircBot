@@ -19,21 +19,9 @@ class parrot extends ircModule {
 	}
 
 	/**
-	 * Just repeat what was said to the bot
+	 * Just repeat what was said to the bot with some funky rubbish
 	 */
 	function repeat($args) {
-
-		/**
-		 * TODO:
-		 * So I'm at a crossroads here
-		 * This function is a child of ircModule. Neither are related to
-		 * ircBot at all - yet I want to use the sendMessage argument in
-		 * the ircBot class so that all messages outbound are logged. As well as
-		 * using the ircBot socket which is the active connection to the server
-		 *
-		 * Issues... need to fix.
-		 *
-		 ? ircBot::sendMessage($args);
-		 */
+		return $args." SQUAWK!!";		
 	}
 }

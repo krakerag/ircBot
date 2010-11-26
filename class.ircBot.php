@@ -44,9 +44,9 @@ class ircBot {
 
 		# Should now have a connection in $this->socket, lets initialise
 		try {
-			$this->sendCommand("PASS ".$this->config['serverPassword']."\n\r");
-			$this->sendCommand("NICK ".$this->config['username']."\n\r");
-			$this->sendCommand("USER ".$this->config['username']." 0 * :".$this->config['realname']."\n\r");
+			$this->sendCommand("PASS ".$this->config['serverPassword']);
+			$this->sendCommand("NICK ".$this->config['username']);
+			$this->sendCommand("USER ".$this->config['username']." 0 * :".$this->config['realname']);
 		} catch (Exception $e) {
 			die($this->log("Exception caught while negotiating server join: ".$e->getMessage()));
 		}
@@ -67,7 +67,7 @@ class ircBot {
 			# Detect MOTD (message number 376 or 422)
 			if(strpos($this->inbound, $this->config['server']." 376") || strpos($this->inbound, $this->config['server']." 422")) {
 				# Join channel then...
-				$this->sendCommand("JOIN ".$this->config['destinationChannel']."\n\r");
+				$this->sendCommand("JOIN ".$this->config['destinationChannel']);
             }
 			# If successfully joined the channel, mark bot as ready (names list message id 353)
 			if(strpos($this->inbound, $this->config['server']." 353")) {
@@ -84,7 +84,10 @@ class ircBot {
 						if($moduleObj->findCommand($this->lastMessage['command'])) {
 							# If we've found a matching command, fire it up with the arguments passed over
 							$this->log(" -> Found command '".$this->lastMessage['command']."' in module '".$moduleName."' called by user: '".$this->lastMessage['nickname']."'");
-							$this->modules[$moduleName]->launch($this->lastMessage['command'], $this->lastMessage['args'], $this->socket);
+							$reply = $this->modules[$moduleName]->launch($this->lastMessage['command'], $this->lastMessage['args']);
+							if(strlen($reply) > 0) {
+								$this->sendMessage($reply);
+							}
 						}
 					}
 				}
@@ -93,8 +96,11 @@ class ircBot {
 			# If server has sent PING command, handle
             if(substr($this->inbound, 0, 6) == "PING :") {
 				# Reply with PONG for keepalive
-				$this->sendCommand("PONG :".substr($this->inbound, 6)."\n\r");
+				$this->sendCommand("PONG :".substr($this->inbound, 6));
             }
+            
+            $this->lastMessage = null;
+            $this->inbound = null;
 		}
 	}
 
@@ -117,7 +123,7 @@ class ircBot {
 				'realname' => $matches[2],
 				'hostname' => $matches[3],
 				'command' => $matches[4],
-				'args' => $matches[5],
+				'args' => rtrim($matches[5],"\n\r"),
 				'chatter' => ''
 			);
 		}
@@ -132,7 +138,7 @@ class ircBot {
 					'hostname' => $matches[3],
 					'command' => '',
 					'args' => '',
-					'chatter' => $matches[4]
+					'chatter' => rtrim($matches[4],"\n\r")
 				);
 			}
 		}
@@ -185,6 +191,9 @@ class ircBot {
 	private function sendCommand($command) {
 		# Log the outbound message
 		$this->log("[SEND]: ".rtrim($command,"\r\n"));
+		if(substr($command,-4) != "\n\r") {
+			$command = $command . "\n\r";
+		}
 		$writtenBytes = fwrite($this->socket, $command, strlen($command));
 		if($writtenBytes < strlen($command)) {
 			throw new Exception("Attempted to write ".strlen($command)." bytes, could only send {$writtenBytes} to socket");
