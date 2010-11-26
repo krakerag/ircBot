@@ -7,10 +7,14 @@
  */
 
 class ircBot {
+
 	private $socket; # Socket variable
-	private $inbound; # Inbound messages from server
 	private $config; # Config from object construction
 	private $admins; # Admin list of hostmasks
+	private $ready; # A toggle to let controller know the bot is ready for commands
+
+	public $inbound; # Last inbound message from server
+	public $lastMessage; # Parsed array of the last message from server
 
 	/**
 	 * Setup a connection and init monitoring of chat
@@ -51,19 +55,67 @@ class ircBot {
 			# Read inbound connection into $this->inbound
 			$this->getTransmission();
 
-			# Conditional flow control depending on the inbound message
-
 			# Detect MOTD (message number 376 or 422)
-			if(strpos($this->inbound, "376") || strpos($this->inbound, "422")) {
+			if(strpos($this->inbound, $this->config['server']." 376") || strpos($this->inbound, $this->config['server']." 422")) {
 				# Join channel then...
 				$this->sendCommand("JOIN ".$this->config['destinationChannel']."\n\r");
             }
+			# If successfully joined the channel, mark bot as ready (names list message id 353)
+			if(strpos($this->inbound, $this->config['server']." 353")) {
+				$this->ready = true;
+            }
+
+			if($this->ready) {
+				# Parse the inbound message and scan for a command
+				$this->parseMessage();
+
+			}
 
 			# If server has sent PING command, handle
             if(substr($this->inbound, 0, 6) == "PING :") {
 				# Reply with PONG for keepalive
 				$this->sendCommand("PONG :".substr($this->inbound, 6)."\n\r");
             }
+		}
+	}
+
+	/**
+	 * Parse the inbound message by splitting it into components
+	 */
+	private function parseMessage() {
+		# Regexp to parse a formatted message
+		# The message should come in format of
+		# :(.*)\!(.*)\@(.*) PRIVMSG #channelname \:\%(.*) (.*) for a command, or
+		# :(.*)\!(.*)\@(.*) PRIVMSG #channelname \:(.*) for regular chatter
+		# thus returning nickname, realname, hostmask, (command, arguments) || (chatter)
+		$matched = false;
+		$pattern = '/:(.*)\!(.*)\@(.*) PRIVMSG '.$this->config['destinationChannel'].' \:\%([^ ]*) (.*)/';
+		preg_match($pattern, $this->inbound, $matches);
+		if(count($matches) > 1) {
+			$matched = true;
+			$this->lastMessage = array(
+				'nickname' => $matches[1],
+				'realname' => $matches[2],
+				'hostname' => $matches[3],
+				'command' => $matches[4],
+				'args' => $matches[5],
+				'chatter' => ''
+			);
+		}
+
+		if(!$matched) {
+			$pattern = '/:(.*)\!(.*)\@(.*) PRIVMSG '.$this->config['destinationChannel'].' \:(.*)/';
+			preg_match($pattern, $this->inbound, $matches);
+			if(count($matches) > 1) {
+				$this->lastMessage = array(
+					'nickname' => $matches[1],
+					'realname' => $matches[2],
+					'hostname' => $matches[3],
+					'command' => '',
+					'args' => '',
+					'chatter' => $matches[4]
+				);
+			}
 		}
 	}
 
