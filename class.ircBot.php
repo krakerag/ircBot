@@ -13,6 +13,7 @@ class ircBot {
 	private $admins; # Admin list of hostmasks
 	private $ready; # A toggle to let controller know the bot is ready for commands
 
+	public $modules; # Array holding active modules & their commands
 	public $inbound; # Last inbound message from server
 	public $lastMessage; # Parsed array of the last message from server
 
@@ -23,8 +24,16 @@ class ircBot {
 		$this->config = $config;
 		$this->admins = $adminList;
 		if($this->config['serverPassword'] == "") $this->config['serverPassword'] = "NOPASS";
-		$this->log("triviaBot - starting up...");
+		$this->log("ircBot - starting up...");
+
+		# Load modules
+		require_once("class.ircModule.php");
 		$this->log("[INIT]: ".print_r($config,true));
+		$this->log("[INIT]: Loading modules...");
+		foreach($config['modules'] as $module) {
+			$this->loadModule($module);
+		}
+		$this->log("[INIT]: Module load finished");
 
 		# Generate a new connection
 		try {
@@ -68,7 +77,17 @@ class ircBot {
 			if($this->ready) {
 				# Parse the inbound message and scan for a command
 				$this->parseMessage();
-
+				if(strlen($this->lastMessage['command'])) {
+					# See if this command can be found in the command list
+					# Command list is established by the loaded modules
+					foreach($this->modules as $moduleName => $moduleObj) {
+						if($moduleObj->findCommand($this->lastMessage['command'])) {
+							# If we've found a matching command, fire it up with the arguments passed over
+							$this->log(" -> Found command '".$this->lastMessage['command']."' in module '".$moduleName."' called by user: '".$this->lastMessage['nickname']."'");
+							$this->modules[$moduleName]->launch($this->lastMessage['command'], $this->lastMessage['args'], $this->socket);
+						}
+					}
+				}
 			}
 
 			# If server has sent PING command, handle
@@ -119,6 +138,20 @@ class ircBot {
 		}
 	}
 
+	private function loadModule($module) {
+		require_once("$module/module.$module.php");
+		try {
+			# Create a new object of required module, and send a reference to current object
+			# so that it can append it's own command set to the current object
+			$this->modules[$module] = new $module();
+			if($this->modules[$module] instanceof $module) {
+				$this->log(" -> Module loaded: $module");
+			}
+		} catch (Exception $e) {
+			$this->log("Exception caught while attempting to load module '$module': ".$e->getMessage());
+		}
+	}
+
 	/**
 	 * Log the message (output to command line at the moment)
 	 * TODO: extend this to log to a file in /var/log at some point
@@ -156,5 +189,12 @@ class ircBot {
 		if($writtenBytes < strlen($command)) {
 			throw new Exception("Attempted to write ".strlen($command)." bytes, could only send {$writtenBytes} to socket");
 		}
+	}
+
+	/**
+	 * Send a message to the channel
+	 */
+	public function sendMessage($message) {
+		$this->sendCommand("PRIVMSG ".$this->config['destinationChannel']." :".$message);
 	}
 }

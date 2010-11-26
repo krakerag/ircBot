@@ -14,4 +14,32 @@
 
 class ircModule {
 
+	protected $commands; # Array of commands the module supports
+
+	/**
+	 * Empty constructor which is overloaded in children
+	 */
+	function __construct() {
+	}
+
+	/**
+	 * Determine if the command exists in the module
+	 */
+	function findCommand($requestedCommand) {
+		foreach($this->commands as $command) {
+			if($command == $requestedCommand) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Launch the requested command with the provided args
+	 */
+	function launch($command, $args) {
+		if(method_exists($this, $command)) {
+			$this->$command($args);
+		}
+	}
 }

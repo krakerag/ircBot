@@ -21,6 +21,9 @@ $config = array(
 'username' => "trivbot",            # Username for the bot to have
 'realname' => "PHP Trivia Bot",     # Realname for bot to have (IRC RFC2812 3.1.3)
 'timeout' => 10, 					# Timeout in seconds for initializing connection
+'modules' => array(                 # List of modules to load
+	'parrot',
+)
 );
 
 # Add full hostmasks here to add admins.
@@ -39,4 +42,3 @@ include_once("class.ircBot.php");
 
 set_time_limit(0); # Continual script setting for commandline execution
 $bot = new ircBot($config, $adminList);
-
