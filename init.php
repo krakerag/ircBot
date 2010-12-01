@@ -21,8 +21,9 @@ $config = array(
 'username' => "trivbot",            # Username for the bot to have
 'realname' => "PHP Trivia Bot",     # Realname for bot to have (IRC RFC2812 3.1.3)
 'timeout' => 10, 					# Timeout in seconds for initializing connection
+'logging' => 1,                     # 2 = all messages, 1 = only commands etc.
 'modules' => array(                 # List of modules to load
-	'parrot',
+	'parrot','math'
 )
 );
 

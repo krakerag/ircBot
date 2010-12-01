@@ -37,9 +37,19 @@ class ircModule {
 	/**
 	 * Launch the requested command with the provided args
 	 */
-	function launch($command, $args) {
+	function launch($command, $parsedArgs) {
 		if(method_exists($this, $command)) {
-			return $this->$command($args);
+			return $this->$command($parsedArgs);
 		}
+	}
+
+	/**
+	 * Scan the arguments to determine a help string
+	 */
+	function help($parsedArgs) {
+		if(strtolower(substr($parsedArgs['args'], 0, 4)) == 'help' || strlen($parsedArgs['args']) == 0) {
+			return true;
+		}
+		return false;
 	}
 }

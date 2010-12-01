@@ -24,11 +24,10 @@ class ircBot {
 		$this->config = $config;
 		$this->admins = $adminList;
 		if($this->config['serverPassword'] == "") $this->config['serverPassword'] = "NOPASS";
-		$this->log("ircBot - starting up...");
+		$this->log("ircBot - starting up...\n");
 
 		# Load modules
 		require_once("class.ircModule.php");
-		$this->log("[INIT]: ".print_r($config,true));
 		$this->log("[INIT]: Loading modules...");
 		foreach($config['modules'] as $module) {
 			$this->loadModule($module);
@@ -68,23 +67,25 @@ class ircBot {
 			if(strpos($this->inbound, $this->config['server']." 376") || strpos($this->inbound, $this->config['server']." 422")) {
 				# Join channel then...
 				$this->sendCommand("JOIN ".$this->config['destinationChannel']);
+				$this->log("[INIT]: Joined destination channel");
             }
 			# If successfully joined the channel, mark bot as ready (names list message id 353)
 			if(strpos($this->inbound, $this->config['server']." 353")) {
 				$this->ready = true;
+				$this->log("[INIT]: Ready for commands!");
             }
 
 			if($this->ready) {
 				# Parse the inbound message and scan for a command
 				$this->parseMessage();
-				if(strlen($this->lastMessage['command'])) {
+				if(strlen($this->lastMessage['command']) > 0) {
 					# See if this command can be found in the command list
 					# Command list is established by the loaded modules
 					foreach($this->modules as $moduleName => $moduleObj) {
 						if($moduleObj->findCommand($this->lastMessage['command'])) {
 							# If we've found a matching command, fire it up with the arguments passed over
 							$this->log(" -> Found command '".$this->lastMessage['command']."' in module '".$moduleName."' called by user: '".$this->lastMessage['nickname']."'");
-							$reply = $this->modules[$moduleName]->launch($this->lastMessage['command'], $this->lastMessage['args']);
+							$reply = $this->modules[$moduleName]->launch($this->lastMessage['command'], $this->lastMessage);
 							if(strlen($reply) > 0) {
 								$this->sendMessage($reply);
 							}
@@ -142,6 +143,18 @@ class ircBot {
 				);
 			}
 		}
+
+		if(substr($this->lastMessage['chatter'],0,1) == '%') {
+			# Correctly change up the parser to handle a command with no args
+			$chatter = explode(" ", $this->lastMessage['chatter']);
+			$this->lastMessage['command'] = ltrim($chatter[0],'%');
+			$chatter = array_shift($chatter);
+			if(is_array($chatter) && count($chatter) > 0) {
+				$this->lastMessage['chatter'] = implode(" ", $chatter);
+			} else {
+				$this->lastMessage['chatter'] = "";
+			}
+		}
 	}
 
 	private function loadModule($module) {
@@ -182,7 +195,9 @@ class ircBot {
 	private function getTransmission() {
 		$this->inbound = fgets($this->socket, 1024);
 		# Log the inbound message
-		$this->log("[RECV]: ".rtrim($this->inbound,"\r\n"));
+		if($this->config['logging'] == 2) {
+			$this->log("[RECV]: ".rtrim($this->inbound,"\r\n"));
+		}
 	}
 
 	/**
@@ -190,7 +205,9 @@ class ircBot {
 	 */
 	private function sendCommand($command) {
 		# Log the outbound message
-		$this->log("[SEND]: ".rtrim($command,"\r\n"));
+		if($this->config['logging'] == 2) {
+			$this->log("[SEND]: ".rtrim($command,"\r\n"));
+		}
 		if(substr($command,-4) != "\n\r") {
 			$command = $command . "\n\r";
 		}
