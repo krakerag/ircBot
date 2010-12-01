@@ -18,3 +18,4 @@
 class trivia extends ircModule {
 
 }
+
