@@ -16,6 +16,8 @@ class parrot extends ircModule {
 		$this->commands = array(
 			'repeat', 'inverse'
 		);
+
+        $this->triggers = array(); // no triggers
 	}
 
 	/**
@@ -35,7 +37,7 @@ class parrot extends ircModule {
 	function repeat($parsedArgs) {
 		if($this->help($parsedArgs)) {
 			# Return some help text
-			return $parsedArgs['nickname'].": Use %repeat to just echo out whatever text you provide to the function.";
+			return $parsedArgs['nickname'].": Use botname: repeat <stuff> to just echo out whatever text you provide to the function.";
 		}
 		return $parsedArgs['nickname'].": ".$parsedArgs['args']." SQUAWK!!";
 	}
@@ -49,7 +51,7 @@ class parrot extends ircModule {
 	function inverse($parsedArgs) {
 		if($this->help($parsedArgs)) {
 			# Return some help text
-			return $parsedArgs['nickname'].": Use %inverse to echo out the reverse of what text you have provided.";
+			return $parsedArgs['nickname'].": Use botname: inverse <stuff> to echo out the reverse of what text you have provided.";
 		}
 		return $parsedArgs['nickname'].": ".strrev($parsedArgs['args']);
 	}

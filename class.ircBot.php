@@ -47,7 +47,8 @@ class ircBot {
 			$this->sendCommand("NICK ".$this->config['username']);
 			$this->sendCommand("USER ".$this->config['username']." 0 * :".$this->config['realname']);
 		} catch (Exception $e) {
-			die($this->log("Exception caught while negotiating server join: ".$e->getMessage()));
+            /** @var $this ircBot */
+            die($this->log("Exception caught while negotiating server join: ".$e->getMessage()));
 		}
 
 		# Now pass off control to the main controller
@@ -58,6 +59,7 @@ class ircBot {
 	 * Server controller, passes off tasks as required from the input
 	 */
 	private function controller() {
+
 		# While connected, manage the input
 		while(!feof($this->socket)) {
 			# Read inbound connection into $this->inbound
@@ -78,12 +80,13 @@ class ircBot {
 			if($this->ready) {
 				# Parse the inbound message and scan for a command
 				$this->parseMessage();
+
+                # See if this command can be found in the command list
+                # Command list is established by the loaded modules
 				if(strlen($this->lastMessage['command']) > 0) {
-					# See if this command can be found in the command list
-					# Command list is established by the loaded modules
 					foreach($this->modules as $moduleName => $moduleObj) {
 						if($moduleObj->findCommand($this->lastMessage['command'])) {
-							# If we've found a matching command, fire it up with the arguments passed over
+                            # Launch command
 							$this->log(" -> Found command '".$this->lastMessage['command']."' in module '".$moduleName."' called by user: '".$this->lastMessage['nickname']."'");
 							$reply = $this->modules[$moduleName]->launch($this->lastMessage['command'], $this->lastMessage);
 							if(strlen($reply) > 0) {
@@ -92,6 +95,27 @@ class ircBot {
 						}
 					}
 				}
+
+                # If not, scan chatter for relevant calls to the bot
+                if(strlen($this->lastMessage['chatter']) > 0) {
+                    foreach($this->modules as $moduleName => $moduleObj) {
+                        if($trigger = $moduleObj->findTrigger($this->lastMessage['chatter'])) {
+                            # Found a trigger for a command, fire it off
+                            # First, strip out chatter into command and args
+                            $triggered_command = $moduleObj->getCommandByTrigger($trigger);
+                            $this->lastMessage['command'] = $triggered_command;
+                            $chatter = $this->lastMessage['chatter'];
+                            $this->lastMessage['chatter'] = '';
+                            $this->lastMessage['args'] = rtrim(ltrim($chatter,$trigger),"\n\r");
+                            # Launch command
+                            $this->log(" -> Found command '".$this->lastMessage['command']."' in module '".$moduleName."' by trigger '".$trigger."' called by user: '".$this->lastMessage['nickname']."'");
+                            $reply = $this->modules[$moduleName]->launch($this->lastMessage['command'], $this->lastMessage);
+                            if(strlen($reply) > 0) {
+                                $this->sendMessage($reply);
+                            }
+                        }
+                    }
+                }
 			}
 
 			# If server has sent PING command, handle
@@ -109,25 +133,36 @@ class ircBot {
 	 * Parse the inbound message by splitting it into components
 	 */
 	private function parseMessage() {
+
 		# Regexp to parse a formatted message
 		# The message should come in format of
-		# :(.*)\!(.*)\@(.*) PRIVMSG #channelname \:\%(.*) (.*) for a command, or
 		# :(.*)\!(.*)\@(.*) PRIVMSG #channelname \:(.*) for regular chatter
-		# thus returning nickname, realname, hostmask, (command, arguments) || (chatter)
+		# thus returning nickname, realname, hostmask, (command, arguments) || (botname: command (arguments)) || (chatter)
 		$matched = false;
-		$pattern = '/:(.*)\!(.*)\@(.*) PRIVMSG '.$this->config['destinationChannel'].' \:\%([^ ]*) (.*)/';
-		preg_match($pattern, $this->inbound, $matches);
-		if(count($matches) > 1) {
-			$matched = true;
-			$this->lastMessage = array(
-				'nickname' => $matches[1],
-				'realname' => $matches[2],
-				'hostname' => $matches[3],
-				'command' => $matches[4],
-				'args' => rtrim($matches[5],"\n\r"),
-				'chatter' => ''
-			);
-		}
+
+        # Try to match against the bots name!
+        # This could mean it is a direct message in chan followed by a command request
+        if(!$matched) {
+            $pattern = '/:(.*)\!(.*)\@(.*) PRIVMSG '.$this->config['destinationChannel'].' \:('.$this->config['username'].')\:(?: +)?([^\s]*) (.*)/';
+            preg_match($pattern, $this->inbound, $matches);
+            if(count($matches) > 1) {
+                $matched = true;
+                $this->lastMessage = array(
+                    'nickname' => $matches[1],
+                    'realname' => $matches[2],
+                    'hostname' => $matches[3],
+                    'command' => $matches[5],
+                    'args' => rtrim($matches[6],"\n\r"),
+                    'chatter' => ''
+                );
+                # Have to match a case whereby a command of 'botname: command' with no args is provided (for help)
+                # If this case occurs we have to do some arg movement otherwise the command parser won't get a hit
+                if($this->lastMessage['args'] != "" && $this->lastMessage['command'] == '') {
+                    $this->lastMessage['command'] = $this->lastMessage['args'];
+                    $this->lastMessage['args'] = "";
+                }
+            }
+        }
 
 		if(!$matched) {
 			$pattern = '/:(.*)\!(.*)\@(.*) PRIVMSG '.$this->config['destinationChannel'].' \:(.*)/';
@@ -143,22 +178,16 @@ class ircBot {
 				);
 			}
 		}
-
-		if(substr($this->lastMessage['chatter'],0,1) == '%') {
-			# Correctly change up the parser to handle a command with no args
-			$chatter = explode(" ", $this->lastMessage['chatter']);
-			$this->lastMessage['command'] = ltrim($chatter[0],'%');
-			$chatter = array_shift($chatter);
-			if(is_array($chatter) && count($chatter) > 0) {
-				$this->lastMessage['chatter'] = implode(" ", $chatter);
-			} else {
-				$this->lastMessage['chatter'] = "";
-			}
-		}
 	}
 
-	private function loadModule($module) {
+    /**
+     * Load up a module into the parent holder
+     * @param $module
+     */
+    private function loadModule($module) {
+
 		require_once("$module/module.$module.php");
+
 		try {
 			# Create a new object of required module, and send a reference to current object
 			# so that it can append it's own command set to the current object
@@ -173,7 +202,7 @@ class ircBot {
 
 	/**
 	 * Log the message (output to command line at the moment)
-	 * TODO: extend this to log to a file in /var/log at some point
+	 * TODO: extend this to log to a file in /var/log at some point in time
 	 */
 	private function log($message) {
 		echo $message."\n";

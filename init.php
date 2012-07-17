@@ -14,27 +14,28 @@
  */
 
 $config = array(
-'server' => "irc.lolliebag.com", 	# IRC server to connect to
-'serverPassword' => "",				# Server password if required (default is blank)
-'serverPort' => "6667",				# Port to connect to (default is 6667)
-'destinationChannel' => "#trivia",  # Channel for bot to connect to
-'username' => "trivbot",            # Username for the bot to have
-'realname' => "PHP Trivia Bot",     # Realname for bot to have (IRC RFC2812 3.1.3)
-'timeout' => 10, 					# Timeout in seconds for initializing connection
-'logging' => 1,                     # 2 = all messages, 1 = only commands etc.
-'modules' => array(                 # List of modules to load
-	'parrot','math'
-)
+    'server' => "irc.lolliebag.com", # IRC server to connect to
+    'serverPassword' => "", # Server password if required (default is blank)
+    'serverPort' => "6667", # Port to connect to (default is 6667)
+    'destinationChannel' => "#tempest", # Channel for bot to connect to
+    'username' => "bot", # Username for the bot to have
+    'realname' => "bot", # Realname for bot to have (IRC RFC2812 3.1.3)
+    'timeout' => 15, # Timeout in seconds for initializing connection
+    'logging' => 2, # 2 = all messages, 1 = only commands etc.
+    'modules' => array( # List of modules to load
+        'parrot','math',
+    )
 );
 
 # Add full hostmasks here to add admins.
 # ie. nickname!realname@hostaddress.isp.com
 
 $adminList = array(
-'lothar!lothar@110-174-74-30.static.tpgi.com.au',
+    'lothar!matthew@579EAE0C.70129981.2CEFAD14.IP',
 );
 
 /**
+ * ----------------------------------------------------------------------------
  * No need to edit below this line
  * ----------------------------------------------------------------------------
  */

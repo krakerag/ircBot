@@ -18,6 +18,10 @@ class math extends ircModule {
 		$this->commands = array(
 			'eq',
 		);
+
+        $this->triggers = array(
+            '==' => 'eq', // an == will call the eq command in the same way
+        );
 	}
 
 	/**
@@ -28,7 +32,7 @@ class math extends ircModule {
 				'realname' => user's realname who called command
 				'hostname' => user's hostmask as known by server
 				'command'  => the command (same as function name)
-				'args'     => arguments post command
+                'args'     => arguments post command
 				'chatter'  => should be empty!
 
 	/**
@@ -37,7 +41,7 @@ class math extends ircModule {
 	function eq($parsedArgs) {
 		if($this->help($parsedArgs)) {
 			# Return some help text
-			return $parsedArgs['nickname'].": Use %eq to generate math results. i.e. '%eq 7 * 6' or '%eq 81 / 7' etc.";
+			return $parsedArgs['nickname'].": Use == or 'botname: eq <equation> to generate math results. i.e. 'botname: eq 7 * 6' or '==81/7' etc.";
 		}
 		$return = $this->_matheval($parsedArgs['args']);
 		return $parsedArgs['nickname'].": ".$return;
@@ -57,6 +61,7 @@ class math extends ircModule {
 	    if($equation == "") {
 			$return = 0;
 		} else {
+            # Don't like using eval but need to find a way around it
 			eval("\$return=" . $equation . ";" );
     	}
     	return $return;
